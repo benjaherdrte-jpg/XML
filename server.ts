@@ -1,20 +1,20 @@
 import express from "express";
 import path from "path";
 import cors from "cors";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createServer as createViteServer } from "vite";
 import { geminiSchema } from "./services/geminiSchema";
 
 const PORT = 3000;
-let aiClient: GoogleGenAI | null = null;
+let aiClient: GoogleGenerativeAI | null = null;
 
-function getAiClient(): GoogleGenAI {
+function getAiClient(): GoogleGenerativeAI {
   if (!aiClient) {
     const key = process.env.GEMINI_API_KEY;
     if (!key) {
       throw new Error("GEMINI_API_KEY environment variable is missing.");
     }
-    aiClient = new GoogleGenAI({ apiKey: key });
+    aiClient = new GoogleGenerativeAI(key);
   }
   return aiClient;
 }
@@ -51,23 +51,31 @@ OUTPUT RULES:
 - If text is Bold or Italic, mark it in the 'parts' array properties.`;
 
       const client = getAiClient();
-      const response = await client.models.generateContent({
-        model: 'gemini-2.5-pro',
-        contents: { 
-          parts: [
-            { inlineData: { data: imageBase64, mimeType: 'image/jpeg' } }, 
-            { text: `Page ${pageNum}: Extract structure based on RED (Pre), GREEN (Superior), and MAGENTA (Article) highlights. Pay special attention to TABLES.` }
-          ] 
-        },
-        config: {
-          systemInstruction: sysInstruction,
+      const model = client.getGenerativeModel({ 
+        model: 'gemini-1.5-pro',
+        systemInstruction: sysInstruction,
+        generationConfig: {
           responseMimeType: "application/json",
           responseSchema: geminiSchema,
           temperature: isRetry ? 0.2 : 0.0,
         }
       });
 
-      const text = response.text || '';
+      const result = await model.generateContent([
+        { 
+          inlineData: { 
+            data: imageBase64, 
+            mimeType: 'image/jpeg' 
+          } 
+        }, 
+        { 
+          text: `Page ${pageNum}: Extract structure based on RED (Pre), GREEN (Superior), and MAGENTA (Article) highlights. Pay special attention to TABLES.` 
+        }
+      ]);
+
+      const response = await result.response;
+      const text = response.text();
+      
       if (!text) {
         return res.status(500).json({ error: "EMPTY_RESPONSE" });
       }
@@ -76,13 +84,19 @@ OUTPUT RULES:
     } catch (e: any) {
       console.error("Gemini Error:", e);
       const errorMessage = e.message || JSON.stringify(e);
+      
+      // Handle specific API errors
       if (e.status === 400 || errorMessage.includes("API key not valid") || errorMessage.includes("API_KEY_INVALID")) {
         return res.status(400).json({ error: "INVALID_API_KEY" });
       }
       if (e.status === 429 || errorMessage.includes('429') || errorMessage.includes('QUOTA_EXCEEDED')) {
         return res.status(429).json({ error: "QUOTA_EXCEEDED" });
       }
-      res.status(500).json({ error: e.message || "INTERNAL_ERROR" });
+      if (errorMessage.includes("SAFETY")) {
+        return res.status(400).json({ error: "CONTENT_FILTERED" });
+      }
+      
+      res.status(500).json({ error: errorMessage || "INTERNAL_ERROR" });
     }
   });
 
@@ -105,4 +119,4 @@ OUTPUT RULES:
   });
 }
 
-startServer();
+startServer().catch(console.error);
