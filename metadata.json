@@ -1,0 +1,8 @@
+{
+  "name": "LegalDoc XML Converter",
+  "description": "An intelligent application to convert PDF/Word legislative documents from Mexico into structured XML format using AI. The app analyzes document structure, tables, and formatting to generate precise metadata and content XML files based on specific mapping rules.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": []
+}
