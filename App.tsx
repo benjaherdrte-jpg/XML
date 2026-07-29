@@ -44,21 +44,6 @@ export default function App() {
     addLog(`Sistema listo. Archivo cargado: ${file.name}`, 'info');
   }, []);
 
-  const aggressiveJsonRepair = (text: string): string => {
-    const match = text.match(/\{[\s\S]*\}/);
-    if (!match) return text;
-    let cleaned = match[0];
-    cleaned = cleaned
-      .replace(/,\s*([}\]])/g, '$1') 
-      .replace(/}\s*{/g, '},{'); 
-    const openBraces = (cleaned.match(/\{/g) || []).length;
-    const closeBraces = (cleaned.match(/\}/g) || []).length;
-    if (openBraces > closeBraces) {
-      cleaned += '}'.repeat(openBraces - closeBraces);
-    }
-    return cleaned;
-  };
-
   const processPageWithVisualCues = async (imageBase64: string, pageNum: number, attempt: number = 0): Promise<ParsedDocument> => {
     try {
       const response = await fetch('/api/process-page', {
@@ -68,8 +53,9 @@ export default function App() {
       });
 
       if (!response.ok) {
-        if (response.status === 429) throw new Error("QUOTA_EXCEEDED");
         const errorData = await response.json();
+        if (response.status === 429) throw new Error("QUOTA_EXCEEDED");
+        if (response.status === 400 && errorData.error === "INVALID_API_KEY") throw new Error("INVALID_API_KEY");
         throw new Error(errorData.error || "SERVER_ERROR");
       }
 
@@ -78,8 +64,7 @@ export default function App() {
       
       if (!text) throw new Error("EMPTY_RESPONSE");
 
-      const repaired = aggressiveJsonRepair(text);
-      return JSON.parse(repaired) as ParsedDocument;
+      return JSON.parse(text) as ParsedDocument;
 
     } catch (e: any) {
       throw e;
@@ -138,8 +123,12 @@ export default function App() {
             } catch (err: any) {
               attempts++;
               const isQuota = err.message === "QUOTA_EXCEEDED";
+              const isInvalidKey = err.message === "INVALID_API_KEY";
               
-              if (isQuota) {
+              if (isInvalidKey) {
+                addLog(`Clave de API inválida o ausente. Configúrala en el menú de Settings.`, 'error');
+                throw new Error("La clave de API de Gemini es inválida o no está configurada. Por favor añádela en el menú de configuración.");
+              } else if (isQuota) {
                 addLog(`Límite de API. Pausa de seguridad (${RATE_LIMIT_HIBERNATION/1000}s)...`, 'warning');
                 await sleep(RATE_LIMIT_HIBERNATION);
               } else {
@@ -190,8 +179,12 @@ export default function App() {
           } catch (err: any) {
             attempts++;
             const isQuota = err.message === "QUOTA_EXCEEDED";
+            const isInvalidKey = err.message === "INVALID_API_KEY";
             
-            if (isQuota) {
+            if (isInvalidKey) {
+              addLog(`Clave de API inválida o ausente. Configúrala en el menú de Settings.`, 'error');
+              throw new Error("La clave de API de Gemini es inválida o no está configurada. Por favor añádela en el menú de configuración.");
+            } else if (isQuota) {
               addLog(`Límite de API. Pausa de seguridad (${RATE_LIMIT_HIBERNATION/1000}s)...`, 'warning');
               await sleep(RATE_LIMIT_HIBERNATION);
             } else {

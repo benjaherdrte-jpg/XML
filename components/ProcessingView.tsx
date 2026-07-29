@@ -8,7 +8,7 @@ interface ProcessingViewProps {
   logs: ProcessingLog[];
 }
 
-export const ProcessingView: React.FC<ProcessingViewProps> = ({ message, progress, logs }) => {
+export const ProcessingView: React.FC<ProcessingViewProps> = React.memo(({ message, progress, logs }) => {
   const logEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -108,4 +108,4 @@ export const ProcessingView: React.FC<ProcessingViewProps> = ({ message, progres
       `}</style>
     </div>
   );
-};
+});

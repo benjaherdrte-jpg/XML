@@ -18,7 +18,7 @@ const ActionButton: React.FC<{ icon: React.ReactNode; label: string; onClick: ()
   </button>
 );
 
-export const PreviewPane: React.FC<{ xmlResult: XmlResult }> = ({ xmlResult }) => {
+export const PreviewPane: React.FC<{ xmlResult: XmlResult }> = React.memo(({ xmlResult }) => {
   const [activeTab, setActiveTab] = useState<Tab>('metadata');
   const [copied, setCopied] = useState(false);
 
@@ -63,7 +63,7 @@ export const PreviewPane: React.FC<{ xmlResult: XmlResult }> = ({ xmlResult }) =
           <ActionButton 
             onClick={handleCopy}
             label={copied ? "Copied!" : "Copy"}
-            icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1m-7-14l-4 4m0 0l4 4m-4-4h18"/></svg>}
+            icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>}
           />
           <ActionButton 
             variant="primary"
@@ -88,4 +88,4 @@ export const PreviewPane: React.FC<{ xmlResult: XmlResult }> = ({ xmlResult }) =
       </div>
     </div>
   );
-};
+});

@@ -6,7 +6,18 @@ import { createServer as createViteServer } from "vite";
 import { geminiSchema } from "./services/geminiSchema";
 
 const PORT = 3000;
-const aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+let aiClient: GoogleGenAI | null = null;
+
+function getAiClient(): GoogleGenAI {
+  if (!aiClient) {
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) {
+      throw new Error("GEMINI_API_KEY environment variable is missing.");
+    }
+    aiClient = new GoogleGenAI({ apiKey: key });
+  }
+  return aiClient;
+}
 
 async function startServer() {
   const app = express();
@@ -39,7 +50,8 @@ OUTPUT RULES:
 - Distinguish between 'structural_header' (titles with colors) and 'paragraph' (content body).
 - If text is Bold or Italic, mark it in the 'parts' array properties.`;
 
-      const response = await aiClient.models.generateContent({
+      const client = getAiClient();
+      const response = await client.models.generateContent({
         model: 'gemini-2.5-pro',
         contents: { 
           parts: [
@@ -63,7 +75,11 @@ OUTPUT RULES:
       res.json({ text });
     } catch (e: any) {
       console.error("Gemini Error:", e);
-      if (e.message?.includes('429') || e.status === 429) {
+      const errorMessage = e.message || JSON.stringify(e);
+      if (e.status === 400 || errorMessage.includes("API key not valid") || errorMessage.includes("API_KEY_INVALID")) {
+        return res.status(400).json({ error: "INVALID_API_KEY" });
+      }
+      if (e.status === 429 || errorMessage.includes('429') || errorMessage.includes('QUOTA_EXCEEDED')) {
         return res.status(429).json({ error: "QUOTA_EXCEEDED" });
       }
       res.status(500).json({ error: e.message || "INTERNAL_ERROR" });

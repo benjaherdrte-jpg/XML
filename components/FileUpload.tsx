@@ -6,7 +6,7 @@ interface FileUploadProps {
   disabled: boolean;
 }
 
-export const FileUpload: React.FC<FileUploadProps> = ({ onFileChange, disabled }) => {
+export const FileUpload: React.FC<FileUploadProps> = React.memo(({ onFileChange, disabled }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [fileName, setFileName] = useState('');
 
@@ -76,4 +76,4 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileChange, disabled }
       </label>
     </div>
   );
-};
+});
